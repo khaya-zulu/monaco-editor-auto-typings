@@ -103,10 +103,25 @@ export class ImportResolver {
 
     if (contents) {
       const { source, at } = contents;
-      this.createModel(
-        source,
-        this.monaco.Uri.parse(this.options.fileRootPath + path.join(`node_modules/${importResource.packageName}`, at))
-      );
+
+      if (importResource.packageName.startsWith('@')) {
+        const rootPath = !importResource.sourcePath ? '' : importResource.importPath.replace('.', '');
+
+        const moduleName = `${importResource.packageName}${rootPath}`;
+
+        const sourceImportsFromModules = source.replaceAll('./', `${importResource.packageName}/`);
+
+        this.monaco.languages.typescript.typescriptDefaults.addExtraLib(
+          `declare module '${moduleName}' {\n${sourceImportsFromModules}\n}`,
+          `inmemory://model/types/${moduleName}`
+        );
+      } else {
+        this.createModel(
+          source,
+          this.monaco.Uri.parse(this.options.fileRootPath + path.join(`node_modules/${importResource.packageName}`, at))
+        );
+      }
+
       await this.resolveImportsInFile(
         source,
         {
